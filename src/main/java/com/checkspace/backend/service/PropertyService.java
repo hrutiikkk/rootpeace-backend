@@ -68,6 +68,30 @@ public class PropertyService {
             value = "propertyListings",
             key = "#city + '-' + #pageable.pageNumber + '-' + #pageable.pageSize"
     )
+
+    public PropertyResponse withdrawProperty(Long propertyId, Long sellerId) {
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new RuntimeException("Property not found"));
+
+        // Security check — seller can only withdraw their OWN property
+        if (!property.getSellerId().equals(sellerId)) {
+            throw new RuntimeException("You can only withdraw your own property");
+        }
+
+        // Can't withdraw if already sold or token paid by buyer
+        if (property.getStatus() == Property.PropertyStatus.SOLD) {
+            throw new RuntimeException("Cannot withdraw — property already sold");
+        }
+        if (property.getStatus() == Property.PropertyStatus.UNDER_NEGOTIATION) {
+            throw new RuntimeException(
+                    "Cannot withdraw — a buyer has paid token. Contact RootPeace team first.");
+        }
+
+        property.setStatus(Property.PropertyStatus.WITHDRAWN);
+        property.setVisible(false);
+        return PropertyResponse.from(propertyRepository.save(property));
+    }
+
     public List<PropertyResponse> getCachedListings(String city, Pageable pageable) {
         Page<Property> page = (city != null && !city.isEmpty())
                 ? propertyRepository.findByVisibleTrueAndStatusAndCity(Property.PropertyStatus.ACTIVE, city, pageable)

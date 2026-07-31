@@ -21,6 +21,18 @@ public class PropertyController {
 
     private final PropertyService propertyService;
 
+    @PutMapping("/{propertyId}/withdraw")
+    public ResponseEntity<ApiResponse<PropertyResponse>> withdraw(
+            @PathVariable Long propertyId,
+            @RequestParam Long sellerId) {
+        try {
+            PropertyResponse response = propertyService.withdrawProperty(propertyId, sellerId);
+            return ResponseEntity.ok(ApiResponse.ok(response, "Property withdrawn successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     // SELLER — create new listing
     @PostMapping
     public ResponseEntity<ApiResponse<PropertyResponse>> createProperty(
