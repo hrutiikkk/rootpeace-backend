@@ -6,6 +6,7 @@ import com.checkspace.backend.model.Payment;
 import com.checkspace.backend.model.Property;
 import com.checkspace.backend.repository.PaymentRepository;
 import com.checkspace.backend.repository.PropertyRepository;
+import com.checkspace.backend.repository.UserRepository;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import com.razorpay.Utils;
@@ -22,6 +23,10 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
+
+    private final WhatsAppService whatsAppService;
+    private final EmailService emailService;
+    private final UserRepository userRepository;
 
     private final PaymentRepository paymentRepository;
     private final PropertyRepository propertyRepository;
@@ -132,6 +137,30 @@ public class PaymentService {
 
             if (payment.getPaymentType() == Payment.PaymentType.VERIFICATION_FEE) {
                 property.setVerificationFeePaid(true);
+                // Fetch seller details
+                userRepository.findById(property.getSellerId()).ifPresent(seller -> {
+                    String invoiceNo = "RP-" + payment.getId() + "-" + System.currentTimeMillis();
+
+                    // WhatsApp alert
+                    if (seller.getPhone() != null) {
+                        whatsAppService.sendPaymentReceived(
+                                seller.getPhone(),
+                                seller.getName() != null ? seller.getName() : "Seller",
+                                property.getTitle()
+                        );
+                    }
+
+                    // Email invoice
+                    if (seller.getEmail() != null) {
+                        emailService.sendPaymentInvoice(
+                                seller.getEmail(),
+                                seller.getName() != null ? seller.getName() : "Seller",
+                                seller.getPhone(),
+                                property.getTitle(),
+                                invoiceNo
+                        );
+                    }
+                });
                 property.setStatus(Property.PropertyStatus.UNDER_VERIFICATION);
             } else if (payment.getPaymentType() == Payment.PaymentType.TOKEN_AMOUNT) {
                 // RACE CONDITION PROTECTION — atomic check before locking

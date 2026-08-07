@@ -4,6 +4,7 @@ import com.checkspace.backend.dto.request.CreatePropertyRequest;
 import com.checkspace.backend.dto.response.PropertyResponse;
 import com.checkspace.backend.model.Property;
 import com.checkspace.backend.repository.PropertyRepository;
+import com.checkspace.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class PropertyService {
+    private final WhatsAppService whatsAppService;
+    private final EmailService emailService;
+    private final UserRepository userRepository;
+
     private final PropertyMediaRepository propertyMediaRepository;
     private final PropertyRepository propertyRepository;
 
@@ -137,7 +142,18 @@ public class PropertyService {
                 .orElseThrow(() -> new RuntimeException("Property not found"));
         property.setStatus(Property.PropertyStatus.ACTIVE);
         property.setVisible(true);
+        propertyRepository.save(property);
+        userRepository.findById(property.getSellerId()).ifPresent(seller -> {
+            if (seller.getPhone() != null)
+                whatsAppService.sendPropertyApproved(seller.getPhone(),
+                        seller.getName() != null ? seller.getName() : "Seller", property.getTitle());
+            if (seller.getEmail() != null)
+                emailService.sendPropertyApproved(seller.getEmail(),
+                        seller.getName() != null ? seller.getName() : "Seller", property.getTitle());
+        });
         return PropertyResponse.from(propertyRepository.save(property));
+
+
     }
 
     public PropertyResponse rejectListing(Long id) {
