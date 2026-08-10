@@ -14,6 +14,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     // IDEMPOTENCY CHECK — find existing payment by key
     Optional<Payment> findByIdempotencyKey(String idempotencyKey);
+    Optional<Payment> findByRazorpayOrderId(String razorpayOrderId);
 
     // User payment history
     java.util.List<Payment> findByUserIdOrderByCreatedAtDesc(Long userId);
