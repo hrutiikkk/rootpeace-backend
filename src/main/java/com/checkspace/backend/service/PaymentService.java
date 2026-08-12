@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-@Service
+//@Service
 @RequiredArgsConstructor
 public class PaymentService {
 

@@ -1,9 +1,9 @@
 package com.checkspace.backend.controller;
 
-import com.checkspace.backend.dto.request.CreateOrderRequest;
-import com.checkspace.backend.dto.request.VerifyPaymentRequest;
+import com.checkspace.backend.dto.request.CashfreeOrderRequest;
 import com.checkspace.backend.dto.response.ApiResponse;
-import com.checkspace.backend.service.PaymentService;
+import com.checkspace.backend.dto.response.CashfreeOrderResponse;
+import com.checkspace.backend.service.CashfreeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,25 +16,25 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PaymentController {
 
-    private final PaymentService paymentService;
+    private final CashfreeService cashfreeService;
 
     @PostMapping("/create-order")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> createOrder(
-            @Valid @RequestBody CreateOrderRequest request) {
+    public ResponseEntity<ApiResponse<CashfreeOrderResponse>> createOrder(
+            @Valid @RequestBody CashfreeOrderRequest request) {
         try {
-            Map<String, Object> result = paymentService.createOrder(request);
+            CashfreeOrderResponse result = cashfreeService.createOrder(request);
             return ResponseEntity.ok(ApiResponse.ok(result, "Order created"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
-    @PostMapping("/verify")
+    @GetMapping("/verify/{orderId}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> verifyPayment(
-            @Valid @RequestBody VerifyPaymentRequest request) {
+            @PathVariable String orderId) {
         try {
-            Map<String, Object> result = paymentService.verifyPayment(request);
-            return ResponseEntity.ok(ApiResponse.ok(result, "Payment verified"));
+            Map<String, Object> result = cashfreeService.verifyPayment(orderId);
+            return ResponseEntity.ok(ApiResponse.ok(result, "Verified"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }

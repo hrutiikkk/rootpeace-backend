@@ -24,30 +24,36 @@ public class WhatsAppService {
     private final RestTemplate restTemplate;
 
     // Generic send method
+    // Generic send method
     @Async
     public void sendMessage(String toPhone, String message) {
+        String formattedPhone = toPhone.startsWith("91") ? toPhone : "91" + toPhone;
+
         try {
             String url = "https://graph.facebook.com/v19.0/" + phoneId + "/messages";
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(token);
+            headers.set("Authorization", "Bearer " + token); // Ensures proper Bearer format
 
             Map<String, Object> body = Map.of(
                     "messaging_product", "whatsapp",
-                    "to", "91" + toPhone,
+                    "to", formattedPhone,
                     "type", "text",
                     "text", Map.of("body", message)
             );
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
             restTemplate.postForEntity(url, entity, String.class);
-            log.info("WhatsApp sent to {}", toPhone);
+            log.info("WhatsApp sent successfully to {}", formattedPhone);
+
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            // THIS WILL CATCH META'S STRICT RULES AND PRINT THEM TO RAILWAY
+            log.error("META API REJECTED MESSAGE TO {}. Error: {}", formattedPhone, e.getResponseBodyAsString());
         } catch (Exception e) {
-            log.error("WhatsApp failed to {}: {}", toPhone, e.getMessage());
+            log.error("WhatsApp failed to {}: {}", formattedPhone, e.getMessage());
         }
     }
-
     // All message templates
 
     @Async
