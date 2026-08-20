@@ -22,20 +22,36 @@ public class OtpService {
     private static final int MAX_ATTEMPTS         = 3;
     private static final int BLOCK_HOURS          = 24;
 
+    private static final String SEND_COUNT_PREFIX = "OTP_SEND_COUNT:";
+    private static final int MAX_SENDS_PER_DAY = 5;
+
     public String generateAndSendOtp(String phone) {
 
-        // Check if phone is blocked
+        // Check if blocked
         if (isBlocked(phone)) {
-            throw new RuntimeException(
-                    "Too many wrong attempts. Try again after 24 hours.");
+            throw new RuntimeException("Too many attempts. Try again after 24 hours.");
         }
 
-        String otp = String.format("%06d", new Random().nextInt(999999));
+        // Check daily send limit — prevents bill bombing
+        String sendKey = SEND_COUNT_PREFIX + phone;
+        String countStr = redisTemplate.opsForValue().get(sendKey);
+        int sendCount = countStr == null ? 0 : Integer.parseInt(countStr);
 
+        if (sendCount >= MAX_SENDS_PER_DAY) {
+            throw new RuntimeException(
+                    "Maximum OTP requests reached for today. Try again tomorrow.");
+        }
+
+        // Increment send counter with 24hr expiry
+        redisTemplate.opsForValue().set(
+                sendKey,
+                String.valueOf(sendCount + 1),
+                24, TimeUnit.HOURS
+        );
+
+        String otp = String.format("%06d", new Random().nextInt(999999));
         redisTemplate.opsForValue().set(
                 OTP_PREFIX + phone, otp, OTP_EXPIRY_MINUTES, TimeUnit.MINUTES);
-
-        // Reset attempt counter on new OTP send
         redisTemplate.delete(ATTEMPT_PREFIX + phone);
 
         log.info("OTP for {}: {}", phone, otp);

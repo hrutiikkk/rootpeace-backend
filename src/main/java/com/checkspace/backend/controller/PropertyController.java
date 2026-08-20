@@ -46,12 +46,12 @@ public class PropertyController {
     // BUYER — public listings, paginated
     @GetMapping("/public")
     public ResponseEntity<ApiResponse<Page<PropertyResponse>>> getPublicListings(
-            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<PropertyResponse> result = propertyService.getPublicListings(city, pageable);
-        return ResponseEntity.ok(ApiResponse.ok(result, "Listings fetched"));
+        return ResponseEntity.ok(ApiResponse.ok(
+                propertyService.getPublicListings(q, PageRequest.of(page, size)),
+                "Listings fetched"));
     }
 
     // ANYONE — single property detail
@@ -81,5 +81,18 @@ public class PropertyController {
     public ResponseEntity<ApiResponse<PropertyResponse>> reject(@PathVariable Long id) {
         PropertyResponse response = propertyService.rejectListing(id);
         return ResponseEntity.ok(ApiResponse.ok(response, "Property rejected"));
+    }
+
+    // ✅ PASTE THIS CLEAN VERSION
+    @PutMapping("/{propertyId}/relist")
+    public ResponseEntity<ApiResponse<PropertyResponse>> relist(
+            @PathVariable Long propertyId,
+            @RequestParam Long sellerId) {
+
+        // The Controller just hands the request to the Service!
+        PropertyResponse response = propertyService.relistProperty(propertyId, sellerId);
+
+        return ResponseEntity.ok(ApiResponse.ok(
+                response, "Property relisted successfully"));
     }
 }

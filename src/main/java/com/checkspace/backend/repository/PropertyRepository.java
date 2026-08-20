@@ -39,4 +39,10 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
     // Race condition protection — atomic check
     @Query("SELECT p FROM Property p WHERE p.id = :id AND p.status = 'ACTIVE'")
     java.util.Optional<Property> findActiveById(@Param("id") Long id);
+
+    @Query("SELECT p FROM Property p WHERE p.visible = true AND p.status = 'ACTIVE' " +
+            "AND (LOWER(p.city) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(p.locality) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')))")
+    Page<Property> searchByQuery(@Param("query") String query, Pageable pageable);
 }

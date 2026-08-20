@@ -12,6 +12,9 @@ import org.springframework.stereotype.Service;
 import com.checkspace.backend.repository.PropertyMediaRepository;
 import com.checkspace.backend.model.PropertyMedia;
 import java.util.List;
+import com.checkspace.backend.model.UserRemark;
+import com.checkspace.backend.repository.PropertyBlacklistRepository;
+import com.checkspace.backend.repository.UserRemarkRepository;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,9 +25,12 @@ public class PropertyService {
     private final UserRepository userRepository;
 
     private final PropertyMediaRepository propertyMediaRepository;
+    private final PropertyBlacklistRepository blacklistRepository;
+    private final UserRemarkRepository remarkRepository;
     private final PropertyRepository propertyRepository;
 
     @org.springframework.transaction.annotation.Transactional
+
     public PropertyResponse createProperty(CreatePropertyRequest req) {
         Property property = Property.builder()
                 .title(req.getTitle())
@@ -46,6 +52,24 @@ public class PropertyService {
                 .build();
 
         Property saved = propertyRepository.save(property);
+
+        // Check if property address is blacklisted
+        String addressHash = org.apache.commons.codec.digest.DigestUtils
+                .md5Hex(req.getAddress().toLowerCase().trim());
+
+        boolean blacklisted = blacklistRepository.existsByAddressHash(addressHash);
+        if (blacklisted) {
+            throw new RuntimeException(
+                    "This property cannot be listed. Contact support for details.");
+        }
+
+// Check if seller is banned
+        boolean sellerBanned = remarkRepository
+                .existsByUserIdAndType(req.getSellerId(), UserRemark.RemarkType.BANNED);
+        if (sellerBanned) {
+            throw new RuntimeException(
+                    "Your account has been restricted. Contact support.");
+        }
 
         if (req.getPhotos() != null) {
             req.getPhotos().forEach(m -> propertyMediaRepository.save(PropertyMedia.builder()
@@ -104,12 +128,13 @@ public class PropertyService {
         return page.map(PropertyResponse::from).getContent();
     }
 
-    public Page<PropertyResponse> getPublicListings(String city, Pageable pageable) {
-        List<PropertyResponse> content = getCachedListings(city, pageable);
-        long total = (city != null && !city.isEmpty())
-                ? propertyRepository.countByVisibleTrueAndStatusAndCity(Property.PropertyStatus.ACTIVE, city)
-                : propertyRepository.countByVisibleTrueAndStatus(Property.PropertyStatus.ACTIVE);
-        return new org.springframework.data.domain.PageImpl<>(content, pageable, total);
+    public Page<PropertyResponse> getPublicListings(
+            String query, Pageable pageable) {
+        Page<Property> page = (query != null && !query.isEmpty())
+                ? propertyRepository.searchByQuery(query, pageable)
+                : propertyRepository.findByVisibleTrueAndStatus(
+                Property.PropertyStatus.ACTIVE, pageable);
+        return page.map(PropertyResponse::from);
     }
 
     public PropertyResponse getById(Long id) {
@@ -161,6 +186,27 @@ public class PropertyService {
                 .orElseThrow(() -> new RuntimeException("Property not found"));
         property.setStatus(Property.PropertyStatus.REJECTED);
         property.setVisible(false);
+        return PropertyResponse.from(propertyRepository.save(property));
+    }
+
+    public PropertyResponse relistProperty(Long propertyId, Long sellerId) {
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new RuntimeException("Not found"));
+
+        if (!property.getSellerId().equals(sellerId))
+            throw new RuntimeException("Not your property");
+
+        if (property.getStatus() != Property.PropertyStatus.WITHDRAWN
+                && property.getStatus() != Property.PropertyStatus.SOLD)
+            throw new RuntimeException("Cannot relist — current status: " + property.getStatus());
+
+        // Same property, just reactivate
+        property.setStatus(Property.PropertyStatus.ACTIVE);
+        property.setVisible(true);
+        property.setTokenPaidBy(null);
+        property.setTokenPaidAt(null);
+        property.setTokenExpiresAt(null);
+
         return PropertyResponse.from(propertyRepository.save(property));
     }
 }
