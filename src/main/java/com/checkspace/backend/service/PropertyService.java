@@ -93,11 +93,10 @@ public class PropertyService {
         return PropertyResponse.from(saved);
     }
 
-    @org.springframework.cache.annotation.Cacheable(
+    @org.springframework.cache.annotation.CacheEvict(
             value = "propertyListings",
-            key = "#city + '-' + #pageable.pageNumber + '-' + #pageable.pageSize"
+            allEntries = true
     )
-
     public PropertyResponse withdrawProperty(Long propertyId, Long sellerId) {
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new RuntimeException("Property not found"));
@@ -121,13 +120,16 @@ public class PropertyService {
         return PropertyResponse.from(propertyRepository.save(property));
     }
 
+    @org.springframework.cache.annotation.Cacheable(
+            value = "propertyListings",
+            key = "(#city != null ? #city : 'all') + '-' + #pageable.pageNumber + '-' + #pageable.pageSize"
+    )
     public List<PropertyResponse> getCachedListings(String city, Pageable pageable) {
         Page<Property> page = (city != null && !city.isEmpty())
                 ? propertyRepository.findByVisibleTrueAndStatusAndCity(Property.PropertyStatus.ACTIVE, city, pageable)
                 : propertyRepository.findByVisibleTrueAndStatus(Property.PropertyStatus.ACTIVE, pageable);
         return page.map(PropertyResponse::from).getContent();
     }
-
     public Page<PropertyResponse> getPublicListings(
             String query, Pageable pageable) {
         Page<Property> page = (query != null && !query.isEmpty())

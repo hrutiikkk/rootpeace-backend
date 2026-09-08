@@ -83,7 +83,7 @@ public class PropertyController {
         return ResponseEntity.ok(ApiResponse.ok(response, "Property rejected"));
     }
 
-    // ✅ PASTE THIS CLEAN VERSION
+
     @PutMapping("/{propertyId}/relist")
     public ResponseEntity<ApiResponse<PropertyResponse>> relist(
             @PathVariable Long propertyId,
