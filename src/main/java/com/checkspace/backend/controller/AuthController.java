@@ -17,14 +17,14 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/otp/send")
-    public ResponseEntity<ApiResponse<String>> sendOtp(
-            @Valid @RequestBody SendOtpRequest request) {
-        authService.sendOtp(request);
-        return ResponseEntity.ok(
-                ApiResponse.ok("OTP sent", "OTP sent to " + request.getPhone())
-        );
-    }
+//    @PostMapping("/otp/send")
+//    public ResponseEntity<ApiResponse<String>> sendOtp(
+//            @Valid @RequestBody SendOtpRequest request) {
+//        authService.sendOtp(request);
+//        return ResponseEntity.ok(
+//                ApiResponse.ok("OTP sent", "OTP sent to " + request.getPhone())
+//        );
+//    }
 
     @PostMapping("/otp/verify")
     public ResponseEntity<ApiResponse<AuthResponse>> verifyOtp(
