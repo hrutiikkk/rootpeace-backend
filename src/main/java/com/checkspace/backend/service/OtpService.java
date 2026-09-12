@@ -75,20 +75,36 @@ public class OtpService {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("authkey", authKey);
 
-            // The JSON body must map exactly to your template variables (##number##)
-            Map<String, String> body = Map.of("number", otp);
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
+            // Clean the phone number (remove +, ensure it starts with 91 for MSG91)
+            String cleanPhone = phone.replace("+", "");
+            if (!cleanPhone.startsWith("91")) {
+                cleanPhone = "91" + cleanPhone;
+            }
 
-            // MSG91 v5 requires authkey, template_id, and mobile as URL query parameters
-            String url = String.format("https://control.msg91.com/api/v5/otp?template_id=%s&mobile=91%s&authkey=%s",
-                    templateId, phone, authKey);
+            Map<String, Object> body = new java.util.HashMap<>();
+            body.put("template_id", templateId);
+            body.put("short_url", "0");
 
-            restTemplate.postForEntity(url, entity, String.class);
+            Map<String, String> recipientData = new java.util.HashMap<>();
+            recipientData.put("mobiles", cleanPhone);
+            // This key "number" maps exactly to the ##number## variable in your DLT text
+            recipientData.put("number", otp);
 
-            log.info("SMS OTP dispatched to {}", phone);
+            body.put("recipients", java.util.Collections.singletonList(recipientData));
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    "https://control.msg91.com/api/v5/flow",
+                    entity,
+                    String.class
+            );
+
+            log.info("SMS OTP dispatched to {}. Response: {}", phone, response.getBody());
         } catch (Exception e) {
             log.error("SMS OTP failed for {}: {}", phone, e.getMessage());
+            // Don't throw — OTP is in Redis, user can retry
         }
     }
 
