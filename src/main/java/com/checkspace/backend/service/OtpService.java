@@ -35,10 +35,15 @@ public class OtpService {
     private static final String BLOCK_PREFIX      = "OTP_BLOCKED:";
     private static final String SEND_COUNT_PREFIX = "OTP_SEND_COUNT:";
 
-    private static final int OTP_EXPIRY_MINUTES = 5;
-    private static final int MAX_ATTEMPTS       = 3;
-    private static final int BLOCK_HOURS        = 24;
-    private static final int MAX_SENDS_PER_DAY  = 5;
+    private static final int OTP_EXPIRY_MINUTES      = 5;
+    private static final int MAX_ATTEMPTS            = 3;
+    private static final int BLOCK_HOURS             = 24;
+    private static final int MAX_SENDS_PER_DAY       = 5;
+    private static final int MAX_ADMIN_SENDS_PER_DAY = 20;
+
+    private boolean isAdminPhone(String phone) {
+        return phone != null && phone.endsWith("9763186236");
+    }
 
     public String generateAndSendOtp(String phone) {
 
@@ -46,13 +51,15 @@ public class OtpService {
             throw new RuntimeException("Too many attempts. Try again after 24 hours.");
         }
 
-        // Daily send limit — prevents bill bombing
+        // Daily send limit check
         String sendKey  = SEND_COUNT_PREFIX + phone;
         String countStr = redisTemplate.opsForValue().get(sendKey);
         int sendCount   = countStr == null ? 0 : Integer.parseInt(countStr);
 
-        if (sendCount >= MAX_SENDS_PER_DAY) {
-            throw new RuntimeException("Maximum OTP requests reached today. Try tomorrow.");
+        int allowedLimit = isAdminPhone(phone) ? MAX_ADMIN_SENDS_PER_DAY : MAX_SENDS_PER_DAY;
+
+        if (sendCount >= allowedLimit) {
+            throw new RuntimeException("Maximum OTP requests reached today (" + allowedLimit + "). Try tomorrow.");
         }
 
         redisTemplate.opsForValue().set(
