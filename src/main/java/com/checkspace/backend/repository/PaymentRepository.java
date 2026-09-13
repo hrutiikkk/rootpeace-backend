@@ -3,6 +3,8 @@ package com.checkspace.backend.repository;
 import com.checkspace.backend.model.Payment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.Query;
+import java.math.BigDecimal;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
@@ -18,4 +20,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     // User payment history
     java.util.List<Payment> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    @Query(value = "SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status='SUCCESS' AND DATE(created_at) = CURDATE()", nativeQuery = true)
+    BigDecimal sumRevenueToday();
 }

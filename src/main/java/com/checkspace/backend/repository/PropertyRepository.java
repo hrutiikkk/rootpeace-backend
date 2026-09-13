@@ -45,4 +45,16 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
             "OR LOWER(p.locality) LIKE LOWER(CONCAT('%', :query, '%')) " +
             "OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')))")
     Page<Property> searchByQuery(@Param("query") String query, Pageable pageable);
+
+    @Query(value = "SELECT COUNT(*) FROM properties WHERE DATE(created_at) = CURDATE()", nativeQuery = true)
+    long countListingsToday();
+
+    @Query(value = "SELECT COUNT(*) FROM properties WHERE status='SOLD' AND DATE(sold_at) = CURDATE()", nativeQuery = true)
+    long countDealsClosedToday();
+
+    @Query(value = "SELECT COUNT(*) FROM properties WHERE status='PENDING'", nativeQuery = true)
+    long countPendingVerifications();
+
+    @Query(value = "SELECT COUNT(*) FROM properties WHERE status='ACTIVE' AND visible=1", nativeQuery = true)
+    long countActiveListings();
 }

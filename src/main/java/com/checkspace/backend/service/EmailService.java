@@ -59,6 +59,48 @@ public class EmailService {
         }
     }
 
+    @Async
+    public void sendAdminEmail(String subject, String body) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            // TODO: Replace this with your actual admin email address
+            helper.setTo("rootpeaceofficial@gmail.com");
+            helper.setSubject(subject);
+
+            // Convert the plain text stats into a nice RootPeace HTML email
+            helper.setText(buildAdminEmailHtml(subject, body), true);
+
+            mailSender.send(message);
+            log.info("Admin nightly stats email sent successfully.");
+        } catch (Exception e) {
+            log.error("Admin stats email failed: {}", e.getMessage());
+        }
+    }
+
+    private String buildAdminEmailHtml(String subject, String bodyText) {
+        // Convert plain text newlines to HTML line breaks
+        String formattedBody = bodyText.replace("\n", "<br>");
+
+        return """
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
+              <div style="background:#111827;padding:24px;border-radius:12px;text-align:center;margin-bottom:24px">
+                <h1 style="color:#fff;margin:0;font-size:24px">Root<span style="color:#FBBF24">Peace</span></h1>
+                <p style="color:rgba(255,255,255,0.5);margin:8px 0 0;font-size:13px">Admin Dashboard</p>
+              </div>
+              <h2 style="color:#111827">%s</h2>
+              <div style="color:#111827;font-size:15px;line-height:1.8;background:#F9FAFB;padding:20px;border-radius:12px;border:1px solid #E5E7EB;">
+                %s
+              </div>
+              <p style="color:#6B7280;font-size:12px;text-align:center;margin-top:24px">
+                Auto-generated nightly report · rootpeace.com
+              </p>
+            </div>
+            """.formatted(subject, formattedBody);
+    }
+
     private String buildPaymentEmailHtml(String name, String property, String invoice) {
         return """
             <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
